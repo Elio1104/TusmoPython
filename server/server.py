@@ -12,7 +12,7 @@ class ColorEnum(Enum):
     YELLOW = "\033[93m"
     GREEN = "\033[92m"
 
-def read_tusmo_dict(filename: str = "../core/tusmo_dict.txt", encoding: str = "utf-8"):
+def read_tusmo_dict(filename: str = "../core/anime_dict.txt", encoding: str = "utf-8"):
     """Read `tusmo_dict.txt` (in the same folder) and return non-empty stripped lines."""
     p = Path(__file__).parent / filename
     if not p.exists():
