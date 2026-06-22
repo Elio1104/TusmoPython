@@ -5,6 +5,7 @@ from pathlib import Path
 
 import uvicorn
 import socketio
+import uuid
 
 from core import conf
 
@@ -28,6 +29,25 @@ def read_tusmo_dict(filename: str = "../core/anime_dict.txt", encoding: str = "u
 sio = socketio.AsyncServer(async_mode='asgi')
 app = socketio.ASGIApp(sio)
 valid_words = read_tusmo_dict()
+
+lobbies = {}
+
+def serialize_lobbies():
+    return [
+        {
+            "id": lobby_id,
+            "owner": data["owner"],
+            "players": len(data["players"]),
+        }
+        for lobby_id, data in lobbies.items()
+    ]
+
+async def broadcast_lobbies():
+    print("\nLobby update:")
+    for lobby_id, data in lobbies.items():
+        print(f" - {lobby_id} | owner={data['owner']} | players={len(data['players'])}")
+
+    await sio.emit("lobby_list", serialize_lobbies())
 
 ### Game logic ###
 def get_random_word() -> str:
@@ -77,6 +97,87 @@ async def connect(sid, environ, auth):
 async def disconnect(sid):
     print(f"Client disconnected: {sid}") #TODO: add some logic
 
+@sio.event
+async def create_lobby(sid, data):
+
+    for lobby in lobbies.values():
+        if sid in lobby["players"]:
+            return {"error": "Already in a lobby"}
+
+    lobby_id = str(uuid.uuid4())[:5]
+
+    lobbies[lobby_id] = {
+        "owner": sid,
+        "gamestate": None,
+        "players":{
+            sid:{
+                "is_ready": False,
+                "guesses": 0
+            }
+        }
+    }
+
+    print(f"Lobby created: {lobby_id} by {sid}")
+
+    await broadcast_lobbies()
+    return {"lobby_id": lobby_id}
+
+@sio.event
+async def join_lobby(sid, data):
+
+    for lobby in lobbies.values():
+        if sid in lobby["players"]:
+            return {"error": "Already in a lobby"}
+
+    lobby_id = data.get("lobby_id")
+
+    if lobby_id not in lobbies:
+        return {"error": "Lobby not found"}
+
+    lobbies[lobby_id]["players"].add(sid)
+
+    print(f"{sid} joined lobby {lobby_id}")
+
+    await broadcast_lobbies()
+    return {"lobby_id": lobby_id}
+
+@sio.event
+async def leave_lobby(sid, data):
+    lobby_id = data.get("lobby_id")
+
+    if lobby_id not in lobbies:
+        return {"error": "Lobby not found"}
+
+    lobbies[lobby_id]["players"].remove(sid)
+
+    if len(lobbies[lobby_id]["players"]) == 0:
+        del lobbies[lobby_id]
+
+    print(f"{sid} left lobby {lobby_id}")
+
+    await broadcast_lobbies()
+    return {"lobby_id": lobby_id}
+
+@sio.event
+async def ready_lobby(sid, data):
+    for lobby in lobbies.values():
+        if sid in lobby["players"]:
+            lobby["players"][sid]["is_ready"] = True
+            break
+
+@sio.event
+async def start_lobby(sid, data):
+    async def start_game(lobby_id):
+        gamestate = GameState(word=get_random_word())
+
+        lobbies[lobby_id]["gamestate"] = gamestate
+
+        print(lobbies[lobby_id]["gamestate"].word)
+
+    for lobby_id, lobby in lobbies.items():
+        if sid == lobby["owner"]:
+            await start_game(lobby_id)
+            break
 
 ### Custom events ###
 @sio.on('send_guess')

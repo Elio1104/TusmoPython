@@ -4,6 +4,43 @@ from core import conf
 
 sio = socketio.AsyncClient()
 
+@sio.event
+async def lobby_list(data):
+    print("\nLobbies:")
+    for lobby in data:
+        print(f"- {lobby['id']} | players={lobby['players']}")
+
+async def input_loop():
+    while True:
+        cmd = await asyncio.to_thread(input, "\n> ")
+
+        if cmd == "create":
+            res = await sio.call("create_lobby", {})
+            print("Lobby created:", res)
+
+        elif cmd.startswith("join"):
+            _, lobby_id = cmd.split()
+            res = await sio.call("join_lobby", {"lobby_id": lobby_id})
+            print("Joined:", res)
+
+        elif cmd.startswith("leave"):
+            _, lobby_id = cmd.split()
+            res = await sio.call("leave_lobby", {"lobby_id": lobby_id})
+            print("Left")
+
+        elif cmd == "ready":
+            res = await sio.call("ready_lobby", {})
+            print("Ready:", res)
+
+        elif cmd == "start":
+            res = await sio.call("start_lobby", {})
+            print("Start:", res)
+
+        elif cmd == "quit":
+            await sio.disconnect()
+            break
+
+
 async def game_logic():
     """Main game loop that handles game logic and communication with the server"""
 
@@ -34,6 +71,8 @@ async def client():
     await sio.connect(f'http://{conf.SERV_IP}:{conf.SERV_PORT}', auth={
         'username': 'test1234' #TODO: get username from user input
     })
+
+    await input_loop()
 
     await game_logic()
 
