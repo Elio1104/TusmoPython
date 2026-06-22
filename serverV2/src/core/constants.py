@@ -1,0 +1,24 @@
+class ErrorCodes:
+    # Lobby
+    ALREADY_IN_LOBBY = "ALREADY_IN_LOBBY"
+    NOT_IN_LOBBY = "NOT_IN_LOBBY"
+    LOBBY_NOT_FOUND = "LOBBY_NOT_FOUND"
+    LOBBY_FULL = "LOBBY_FULL"
+    NOT_OWNER = "NOT_OWNER"
+    # Game
+    GAME_ALREADY_STARTED = "GAME_ALREADY_STARTED"
+    GAME_NOT_STARTED = "GAME_NOT_STARTED"
+    NOT_ALL_READY = "NOT_ALL_READY"
+    INVALID_GUESS = "INVALID_GUESS"
+    WORD_NOT_IN_DICT = "WORD_NOT_IN_DICT"
+    WRONG_LENGTH = "WRONG_LENGTH"
+    GAME_OVER = "GAME_OVER"
+
+
+class GameConfig:
+    MAX_TRIES: int = 6
+    MIN_PLAYERS: int = 1       # Nombre minimum de joueurs pour démarrer
+    MAX_PLAYERS: int = 8
+    LOBBY_ID_LENGTH: int = 5
+    MIN_WORD_LENGTH: int = 4
+    MAX_WORD_LENGTH: int = 12
