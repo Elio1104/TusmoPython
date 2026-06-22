@@ -7,18 +7,27 @@ sio = socketio.AsyncClient()
 async def game_logic():
     """Main game loop that handles game logic and communication with the server"""
 
-    ## User Input
-    guess = await asyncio.to_thread(input, "Enter your guess: ")
+    is_won = False
+    nbr_try = 0
 
-    response = await sio.call('send_guess', {
-        'guess': guess
-    })
+    while not is_won and nbr_try < 6:
 
-    if response["result"] == "correct":
-        print(response["message"])
-    else:
-        print(response["message"])
-        await game_logic()
+        ## User Input
+        guess = await asyncio.to_thread(input, "Enter your guess: ")
+
+        response = await sio.call('send_guess', {
+            'guess': guess
+        })
+
+        if response["result"] == "correct":
+            is_won = True
+            nbr_try += 1
+            print(response["message"])
+        else:
+            print(response["message"])
+            nbr_try += 1
+
+    print("Game Over! You won!" if is_won else "Game Over! You lost!")
 
 
 async def client():

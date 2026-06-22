@@ -1,4 +1,5 @@
 import random
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
@@ -7,12 +8,16 @@ import socketio
 
 from core import conf
 
+@dataclass
+class GameState:
+    word: str
+
 class ColorEnum(Enum):
     GRAY = "\033[0m"
     YELLOW = "\033[93m"
     GREEN = "\033[92m"
 
-def read_tusmo_dict(filename: str = "../core/tusmo_dict.txt", encoding: str = "utf-8"):
+def read_tusmo_dict(filename: str = "../core/anime_dict.txt", encoding: str = "utf-8"):
     """Read `tusmo_dict.txt` (in the same folder) and return non-empty stripped lines."""
     p = Path(__file__).parent / filename
     if not p.exists():
@@ -23,12 +28,13 @@ def read_tusmo_dict(filename: str = "../core/tusmo_dict.txt", encoding: str = "u
 sio = socketio.AsyncServer(async_mode='asgi')
 app = socketio.ASGIApp(sio)
 valid_words = read_tusmo_dict()
-chosen_word = random.choice(valid_words)
 
 ### Game logic ###
 def get_random_word() -> str:
     """Return a random word from the valid words list."""
     return random.choice(valid_words)
+
+gamestate = GameState(word=get_random_word())
 
 def is_valid_guess(word: str, chosen_word: str) -> bool:
     """Check if the guessed word is in the valid words list."""
@@ -79,12 +85,13 @@ async def send_guess(sid, data):
 
     guess = data.get('guess', None)
     print('Received guess from client:', sid, 'Guess:', guess)
+    print('Chosen word:', gamestate.word)
 
-    is_valid = is_valid_guess(guess, chosen_word)
+    is_valid = is_valid_guess(guess, gamestate.word)
     print(f"Is the guess valid? {is_valid}")
 
     if is_valid:
-        print(compare_guess(guess, chosen_word)) ##changeme
+        print(compare_guess(guess, gamestate.word)) ##changeme
 
         return {
             'result': 'correct',
@@ -98,5 +105,4 @@ async def send_guess(sid, data):
 
 
 if __name__ == "__main__":
-    print(chosen_word)
     uvicorn.run('server:app', host=conf.SERV_IP, port=conf.SERV_PORT)
