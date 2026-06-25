@@ -62,6 +62,8 @@ async def game_logic():
             is_won = True
             nbr_try += 1
             print(response["message"])
+        elif response["result"] == "invalid":
+            print(response["message"])
         else:
             print(response["message"])
             nbr_try += 1

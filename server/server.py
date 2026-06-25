@@ -173,9 +173,10 @@ async def start_lobby(sid, data):
         gamestate = GameState(word=get_random_word())
 
         lobbies[lobby_id]["gamestate"] = gamestate
+        hidden_word = gamestate.word[0] + "♦" * (len(gamestate.word) - 1)
 
-        print(lobbies[lobby_id]["gamestate"].word)
-        return f"Game {lobby_id} started !"
+        print(gamestate.word)
+        return f"Game started ! : {hidden_word}"
 
     for lobby_id, lobby in lobbies.items():
         if sid == lobby["owner"]:
@@ -228,8 +229,8 @@ async def send_guess(sid, data):
 
     else :
         return {
-            'result': 'incorrect',
-            'message': f'Incorrect guess: {guess}'
+            'result': 'invalid',
+            'message': f'Invalid guess: {guess}'
         }
 
 
