@@ -18,7 +18,7 @@ class ColorEnum(Enum):
     YELLOW = "\033[93m"
     GREEN = "\033[92m"
 
-def read_tusmo_dict(filename: str = "../core/anime_dict.txt", encoding: str = "utf-8"):
+def read_tusmo_dict(filename: str = "../core/tusmo_dict.txt", encoding: str = "utf-8"):
     """Read `tusmo_dict.txt` (in the same folder) and return non-empty stripped lines."""
     p = Path(__file__).parent / filename
     if not p.exists():
@@ -53,8 +53,6 @@ async def broadcast_lobbies():
 def get_random_word() -> str:
     """Return a random word from the valid words list."""
     return random.choice(valid_words)
-
-gamestate = GameState(word=get_random_word())
 
 def is_valid_guess(word: str, chosen_word: str) -> bool:
     """Check if the guessed word is in the valid words list."""
@@ -134,7 +132,9 @@ async def join_lobby(sid, data):
     if lobby_id not in lobbies:
         return {"error": "Lobby not found"}
 
-    lobbies[lobby_id]["players"].add(sid)
+    lobbies[lobby_id]["players"][sid] = {
+        "is_ready": False
+    }
 
     print(f"{sid} joined lobby {lobby_id}")
 
@@ -148,7 +148,7 @@ async def leave_lobby(sid, data):
     if lobby_id not in lobbies:
         return {"error": "Lobby not found"}
 
-    lobbies[lobby_id]["players"].remove(sid)
+    del lobbies[lobby_id]["players"][sid]
 
     if len(lobbies[lobby_id]["players"]) == 0:
         del lobbies[lobby_id]
@@ -163,6 +163,8 @@ async def ready_lobby(sid, data):
     for lobby in lobbies.values():
         if sid in lobby["players"]:
             lobby["players"][sid]["is_ready"] = True
+            print(f"Player {sid} ready")
+            return f"Ready !"
             break
 
 @sio.event
@@ -173,10 +175,16 @@ async def start_lobby(sid, data):
         lobbies[lobby_id]["gamestate"] = gamestate
 
         print(lobbies[lobby_id]["gamestate"].word)
+        return f"Game {lobby_id} started !"
 
     for lobby_id, lobby in lobbies.items():
         if sid == lobby["owner"]:
-            await start_game(lobby_id)
+
+            for player in lobby["players"].values():
+                if player["is_ready"] == False:
+                    return "All players are not ready"
+
+            return await start_game(lobby_id)
             break
 
 ### Custom events ###
@@ -186,18 +194,38 @@ async def send_guess(sid, data):
 
     guess = data.get('guess', None)
     print('Received guess from client:', sid, 'Guess:', guess)
+
+    lobby = next(
+        (l for l in lobbies.values() if sid in l["players"]),
+        None
+    )
+
+    if not lobby or not lobby.get("gamestate"):
+        return {"error": "Game not started"}
+
+    gamestate = lobby["gamestate"]
+
     print('Chosen word:', gamestate.word)
 
     is_valid = is_valid_guess(guess, gamestate.word)
     print(f"Is the guess valid? {is_valid}")
 
     if is_valid:
-        print(compare_guess(guess, gamestate.word)) ##changeme
+        colored = compare_guess(guess, gamestate.word) ##changeme
 
-        return {
-            'result': 'correct',
-            'message': f'You guessed correctly: {guess}'
-        }
+        if guess == gamestate.word:
+
+            return {
+                'result': 'correct',
+                'message': f'You guessed correctly: {colored}'
+            }
+        else:
+
+            return {
+                'result': 'incorrect',
+                'message': f'You guessed wrong: {colored}'
+            }
+
     else :
         return {
             'result': 'incorrect',

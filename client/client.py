@@ -3,6 +3,7 @@ import socketio
 from core import conf
 
 sio = socketio.AsyncClient()
+game_started = asyncio.Event()
 
 @sio.event
 async def lobby_list(data):
@@ -35,6 +36,7 @@ async def input_loop():
         elif cmd == "start":
             res = await sio.call("start_lobby", {})
             print("Start:", res)
+            game_started.set()
 
         elif cmd == "quit":
             await sio.disconnect()
@@ -68,11 +70,20 @@ async def game_logic():
 
 
 async def client():
-    await sio.connect(f'http://{conf.SERV_IP}:{conf.SERV_PORT}', auth={
-        'username': 'test1234' #TODO: get username from user input
+    await sio.connect(f'http://10.10.8.121:{conf.SERV_PORT}', auth={
+        'username': 'test12345' #TODO: get username from user input
     })
 
-    await input_loop()
+    input_task = asyncio.create_task(input_loop())
+
+    await game_started.wait()  # wait until server starts game
+
+    input_task.cancel()  # stop lobby commands
+
+    try:
+        await input_task
+    except asyncio.CancelledError:
+        pass
 
     await game_logic()
 

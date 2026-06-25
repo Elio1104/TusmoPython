@@ -1,2 +1,2 @@
-SERV_IP: str = '127.0.0.1'
+SERV_IP: str = '10.10.8.122'
 SERV_PORT: int = 5000
